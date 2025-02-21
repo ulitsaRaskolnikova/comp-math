@@ -69,8 +69,10 @@ def read_user_input():
     matrix = None
     values = None
     if is_random:
-        matrix = np.random.uniform(LEFT_BOUND, RIGHT_BOUND, (n, n))
-        values = np.random.uniform(LEFT_BOUND, RIGHT_BOUND, n)
+        matrix = np.random.rand(n, n) * 100
+        values = np.random.rand(n) * 100
+        for i in range(n):
+            matrix[i][i] = sum(matrix[i]) + 1
     else:
         matrix = get_matrix_by_user(n)
         values = get_values_by_user(n)
