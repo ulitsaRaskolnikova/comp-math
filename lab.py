@@ -47,13 +47,11 @@ def adams_method(func, x0, xn, y0, h, tol=1e-6):
 
     x = x0 + 3 * h
     while x < xn and not math.isclose(x, xn):
-        # Предиктор
         f_im3 = func(xs[-3], ys[-3])
         f_im2 = func(xs[-2], ys[-2])
         f_im1 = func(xs[-1], ys[-1])
         y_pred = ys[-1] + h / 24 * (55 * f_im1 - 59 * f_im2 + 37 * f_im3 - 9 * func(xs[-4], ys[-4]))
 
-        # Корректор
         y_corr = y_pred
         while True:
             f_i = func(x + h, y_corr)
@@ -200,3 +198,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# 2
+# 0
+# 1
+# 0
+# 0.5
+# 0.01
