@@ -1,144 +1,293 @@
 import math
+import os
+from sys import stdin, stdout
+
+import numpy as np
+import matplotlib.pyplot as plt
 
 
-def f1(x):
-    """Линейная функция"""
-    return 2 * x + 1
+def linear_approximation(X, Y):
+    sx = sum(X)
+    sxx = sum(x * x for x in X)
+    sy = sum(Y)
+    sxy = sum(x * y for x, y in zip(X, Y))
+    A = np.matrix([[len(X), sx], [sx, sxx]])
+    B = np.matrix([[sy], [sxy]])
+    res = np.linalg.solve(A, B)
+    return res[0, 0], res[1, 0]
 
 
-def f1_integral(x):
-    return (x ** 2) + x
+def square_approximation(X, Y):
+    sx = sum(X)
+    sxx = sum(x ** 2 for x in X)
+    sxxx = sum(x ** 3 for x in X)
+    sxxxx = sum(x ** 4 for x in X)
+    sy = sum(Y)
+    sxy = sum(x * y for x, y in zip(X, Y))
+    sxxy = sum(x ** 2 * y for x, y in zip(X, Y))
+    A = np.matrix([[len(X), sx, sxx], [sx, sxx, sxxx], [sxx, sxxx, sxxxx]])
+    B = np.matrix([[sy], [sxy], [sxxy]])
+    res = np.linalg.solve(A, B)
+    return res[0, 0], res[1, 0], res[2, 0]
 
 
-def f2(x):
-    """Квадратичная функция"""
-    return x ** 2 + 3 * x - 2
+def cube_approximation(X, Y):
+    sx = sum(X)
+    sxx = sum(x ** 2 for x in X)
+    sxxx = sum(x ** 3 for x in X)
+    sxxxx = sum(x ** 4 for x in X)
+    sxxxxx = sum(x ** 5 for x in X)
+    sxxxxxx = sum(x ** 6 for x in X)
+    sy = sum(Y)
+    sxy = sum(x * y for x, y in zip(X, Y))
+    sxxy = sum(x ** 2 * y for x, y in zip(X, Y))
+    sxxxy = sum(x ** 3 * y for x, y in zip(X, Y))
+    A = np.matrix([
+        [len(X), sx, sxx, sxxx],
+        [sx, sxx, sxxx, sxxxx],
+        [sxx, sxxx, sxxxx, sxxxxx],
+        [sxxx, sxxxx, sxxxxx, sxxxxxx]
+    ])
+    B = np.matrix([[sy], [sxy], [sxxy], [sxxxy]])
+    res = np.linalg.solve(A, B)
+    return res[0, 0], res[1, 0], res[2, 0], res[3, 0]
 
 
-def f2_integral(x):
-    return (x ** 3) / 3 + 3 * (x ** 2) / 2 - 2*x
+def exponential_approximation(X, Y):
+    if any(y <= 0 for y in Y):
+        raise ValueError("Для показательной аппроксимации значения Y должны быть положительными.")
+    log_Y = [math.log(y) for y in Y]
+    A, b = linear_approximation(X, log_Y)
+    return math.exp(A), b
 
 
-def f3(x):
-    """Тригонометрическая функция"""
-    return math.sin(x) + 0.5
+def logarithmic_approximation(X, Y):
+    if any(x <= 0 for x in X):
+        raise ValueError("Для логарифмической аппроксимации значения X должны быть положительными.")
+    log_X = [math.log(x) for x in X]
+    return linear_approximation(log_X, Y)
 
 
-def f3_integral(x):
-    return -math.cos(x) + 0.5 * x
+def power_approximation(X, Y):
+    if any(x <= 0 for x in X) or any(y <= 0 for y in Y):
+        raise ValueError("Для степенной аппроксимации X и Y должны быть положительными.")
+    log_X = [math.log(x) for x in X]
+    log_Y = [math.log(y) for y in Y]
+    A, b = linear_approximation(log_X, log_Y)
+    return math.exp(A), b
 
 
-def res(f, a, b):
-    return f(b) - f(a)
+def get_linear_approximation(X, Y):
+    a, b = linear_approximation(X, Y)
+    return lambda x: a + b * x
 
 
-def rectangle_left(f, a, b, n):
-    """Метод левых прямоугольников"""
-    h = (b - a) / n
-    return h * sum(f(a + i * h) for i in range(n))
+def get_square_approximation(X, Y):
+    a, b, c = square_approximation(X, Y)
+    return lambda x: a + b * x + c * x ** 2
 
 
-def rectangle_right(f, a, b, n):
-    """Метод правых прямоугольников"""
-    h = (b - a) / n
-    return h * sum(f(a + (i + 1) * h) for i in range(n))
+def get_cube_approximation(X, Y):
+    a, b, c, d = cube_approximation(X, Y)
+    return lambda x: a + b * x + c * x ** 2 + d * x ** 3
 
 
-def rectangle_mid(f, a, b, n):
-    """Метод средних прямоугольников"""
-    h = (b - a) / n
-    return h * sum(f(a + (i + 0.5) * h) for i in range(n))
+def get_exponential_approximation(X, Y):
+    a, b = exponential_approximation(X, Y)
+    return lambda x: a * math.exp(b * x)
 
 
-def trapezoidal(f, a, b, n):
-    """Метод трапеций"""
-    h = (b - a) / n
-    return h * ((f(a) + f(b)) / 2 + sum(f(a + i * h) for i in range(1, n)))
+def get_logarithmic_approximation(X, Y):
+    a, b = logarithmic_approximation(X, Y)
+    return lambda x: a * math.log(x) + b
 
 
-def simpson(f, a, b, n):
-    """Метод Симпсона"""
-    if n % 2 != 0:
-        n += 1
-    h = (b - a) / n
-    sum_odd = sum(f(a + (2 * i - 1) * h) for i in range(1, n // 2 + 1))
-    sum_even = sum(f(a + 2 * i * h) for i in range(1, n // 2))
-    return h / 3 * (f(a) + f(b) + 4 * sum_odd + 2 * sum_even)
+def get_power_approximation(X, Y):
+    a, b = power_approximation(X, Y)
+    return lambda x: a * x ** b
 
 
-def runge_rule(I_h, I_h2, k):
-    """Оценка погрешности по правилу Рунге"""
-    return abs(I_h - I_h2) / (2 ** k - 1)
+def calculate_correlation(x_values, y_values):
+    mean_x = sum(x_values) / len(x_values)
+    mean_y = sum(y_values) / len(y_values)
+    numerator = sum((x - mean_x) * (y - mean_y) for x, y in zip(x_values, y_values))
+    denominator_x = sum((x - mean_x) ** 2 for x in x_values)
+    denominator_y = sum((y - mean_y) ** 2 for y in y_values)
+    return numerator / math.sqrt(denominator_x * denominator_y)
 
 
-def integrate(f, a, b, eps=1e-6, method='simpson'):
-    """Интегрирование с заданной точностью"""
-    methods = {
-        'rect_left': rectangle_left,
-        'rect_right': rectangle_right,
-        'rect_mid': rectangle_mid,
-        'trapezoidal': trapezoidal,
-        'simpson': simpson
+def calculate_determination(y_true, y_pred):
+    mean_pred = sum(y_pred) / len(y_pred)
+    ss_res = sum((y_t - y_p) ** 2 for y_t, y_p in zip(y_true, y_pred))
+    ss_tot = sum((y_t - mean_pred) ** 2 for y_t in y_true)
+    return 1 - ss_res / ss_tot
+
+
+def print_approximation_quality(R, output_file):
+    if R >= 0.95:
+        print("Высокая аппроксимация", file=output_file)
+    elif R >= 0.75:
+        print("Удовлетворительная аппроксимация", file=output_file)
+    elif R >= 0.5:
+        print("Слабая аппроксимация", file=output_file)
+    else:
+        print("Недостаточная аппроксимация", file=output_file)
+
+
+def calculate_standard_deviation(y_pred, y_true):
+    return math.sqrt(sum((p - t) ** 2 for p, t in zip(y_pred, y_true)) / len(y_pred))
+
+
+APPROXIMATION_METHODS = [
+    {
+        'name': "линейная",
+        'function': linear_approximation,
+        'getter': get_linear_approximation,
+        'formula': "{} + ({})x"
+    },
+    {
+        'name': "квадратичная",
+        'function': square_approximation,
+        'getter': get_square_approximation,
+        'formula': "{} + ({})x + ({})x^2"
+    },
+    {
+        'name': "кубическая",
+        'function': cube_approximation,
+        'getter': get_cube_approximation,
+        'formula': "{} + ({})x + ({})x^2 + ({})x^3"
+    },
+    {
+        'name': "показательная",
+        'function': exponential_approximation,
+        'getter': get_exponential_approximation,
+        'formula': "{}e^({})x"
+    },
+    {
+        'name': "степенная",
+        'function': power_approximation,
+        'getter': get_power_approximation,
+        'formula': "{}x^{}"
+    },
+    {
+        'name': "логарифмическая",
+        'function': logarithmic_approximation,
+        'getter': get_logarithmic_approximation,
+        'formula': "{}ln(x) + ({})"
     }
+]
 
-    if method not in methods:
-        raise ValueError("Неизвестный метод интегрирования")
 
-    n = 4
-    k = 2
-    if method == 'rect_left' or method == 'rect_right':
-        k = 1
-    elif (method == 'simpson'):
-        k = 4
+def run_approximations(x_values, y_values, output_file):
+    min_x, max_x = min(x_values), max(x_values)
+    best_sigma = math.inf
+    best_method = ""
 
-    while True:
-        I_h = methods[method](f, a, b, n)
-        I_h2 = methods[method](f, a, b, 2 * n)
-        print(f"n={n} I_h={I_h:.8f} I_h2={I_h2:.8f} R = {runge_rule(I_h, I_h2, k):.8f}")
-        error = runge_rule(I_h, I_h2, k)
+    plt.scatter(x_values, y_values, label="Исходные точки")
 
-        if error < eps:
-            break
-        n *= 2
+    for method in APPROXIMATION_METHODS:
+        try:
+            coefficients = method['function'](x_values, y_values)
+            approx_func = method['getter'](x_values, y_values)
 
-    return I_h2, n, error
+            predicted = [approx_func(x) for x in x_values]
+            errors = [p - y for p, y in zip(predicted, y_values)]
+
+            sigma = calculate_standard_deviation(predicted, y_values)
+            R2 = calculate_determination(y_values, predicted)
+
+            print(f"\n{method['name']} аппроксимация:", file=output_file)
+            print(f"Формула: phi(x) = {method['formula'].format(*coefficients)}", file=output_file)
+
+            print_table(output_file, "     X:     ", x_values, ".3f")
+            print_table(output_file, "     Y:     ", y_values, ".3f")
+            print_table(output_file, "    φ(X):   ", predicted, ".3f")
+            print_table(output_file, "(φ(X) - y)²:", errors, ".3f")
+
+            if method['name'] == "линейная":
+                corr = calculate_correlation(x_values, y_values)
+                print(f"Коэффициент корреляции: {corr:.3f}", file=output_file)
+
+            print(f"Коэффициент детерминации R²: {R2:.3f}", file=output_file)
+            print_approximation_quality(R2, output_file)
+            print(f"Среднеквадратичное отклонение: {sigma:.3f}", file=output_file)
+
+            if sigma < best_sigma:
+                best_sigma = sigma
+                best_method = method['name']
+
+            x_plot = np.linspace(min_x, max_x, 400)
+            y_plot = np.ravel([approx_func(x) for x in x_plot])
+            plt.plot(x_plot, y_plot, label=method['name'])
+
+        except Exception as e:
+            print(f"Ошибка в {method['name']} аппроксимации: {str(e)}", file=output_file)
+
+    print(f"\nЛучший метод: {best_method}", file=output_file)
+    print(f"Минимальное стандартное отклонение: {best_sigma:.3f}", file=output_file)
+
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+def print_table(file, header, values, format_spec):
+    print(header, end="\t", file=file)
+    for val in values:
+        print(f"{val:{format_spec}}", end="\t", file=file)
+    print(file=file)
 
 
 def main():
-    print("Доступные функции:")
-    print("1. 2x + 1")
-    print("2. x^2 + 3x - 2")
-    print("3. sin(x) + 0.5")
+    while True:
+        try:
+            x_data = []
+            y_data = []
 
-    choice = int(input("Выберите функцию (1-3): "))
-    a = float(input("Введите нижний предел интегрирования: "))
-    b = float(input("Введите верхний предел интегрирования: "))
-    eps = float(input("Введите точность вычисления (например, 0.0001): "))
+            input_source = input("Введите файл для считывания: ")
 
-    funcs = [f1, f2, f3]
-    f = funcs[choice - 1]
-    funcs_integral = [f1_integral,f2_integral,f3_integral]
-    print("\nДоступные методы:")
-    methods = {
-        '1': 'rect_left',
-        '2': 'rect_right',
-        '3': 'rect_mid',
-        '4': 'trapezoidal',
-        '5': 'simpson'
-    }
-    for num, name in methods.items():
-        print(f"{num}. {name}")
+            if not input_source:
+                print("Вводите пары чисел x y, каждую пару с новой строчки:")
+                input_file = stdin
+            else:
+                if not os.path.isfile(input_source):
+                    raise FileNotFoundError(f"Файл {input_source} не найден.")
+                input_file = open(input_source, "r")
 
-    method_choice = input("Выберите метод (1-5): ")
-    method = methods[method_choice]
+            for line in input_file:
+                if len(x_data) >= 9:
+                    break
+                if line.strip() == "":
+                    continue
 
-    result, n, error = integrate(f, a, b, eps, method)
+                try:
+                    x, y = map(float, line.strip().split())
+                    x_data.append(x)
+                    y_data.append(y)
+                except ValueError:
+                    raise ValueError(f"Ошибка в строке '{line.strip()}'. Ожидались два числа.")
 
-    print("\nРезультат:")
-    print(f"Значение интеграла: {result:.8f}")
-    print(f"Точное значение: {res(funcs_integral[choice-1],a,b)}")
-    print(f"Число разбиений: {n}")
-    print(f"Оценка погрешности: {error:.2e}")
+            output_dest = input("Введите файл для вывода: ")
+            output_file = stdout if not output_dest else open(output_dest, "w")
+
+            run_approximations(x_data, y_data, output_file)
+
+            if input_source:
+                input_file.close()
+            if output_dest:
+                output_file.close()
+
+            break
+
+        except FileNotFoundError as e:
+            print(f"Ошибка: {str(e)}")
+        except ValueError as e:
+            print(f"Ошибка данных: {str(e)}")
+        except Exception as e:
+            print(f"Неожиданная ошибка: {str(e)}")
+        finally:
+            print("\n" + "=" * 50 + "\n")
+
 
 if __name__ == "__main__":
     main()
