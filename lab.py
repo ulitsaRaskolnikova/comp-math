@@ -7,15 +7,10 @@ import matplotlib.pyplot as plt
 
 
 def linear_approximation(X, Y):
-    sx = 0
-    sxx = 0
-    sy = 0
-    sxy = 0
-    for x, y in zip(X, Y):
-        sx += x
-        sxx += x * x
-        sy += y
-        sxy += x * y
+    sx = sum(X)
+    sxx = sum(x * x for x in X)
+    sy = sum(Y)
+    sxy = sum(x * y for x, y in zip(X, Y))
     A = np.matrix([[len(X), sx], [sx, sxx]])
     B = np.matrix([[sy], [sxy]])
     res = np.linalg.solve(A, B)
@@ -23,21 +18,13 @@ def linear_approximation(X, Y):
 
 
 def square_approximation(X, Y):
-    sx = 0
-    sxx = 0
-    sxxx = 0
-    sxxxx = 0
-    sy = 0
-    sxy = 0
-    sxxy = 0
-    for x, y in zip(X, Y):
-        sx += x
-        sxx += x * x
-        sxxx += x * x * x
-        sxxxx += x * x * x * x
-        sy += y
-        sxy += x * y
-        sxxy += x * x * y
+    sx = sum(X)
+    sxx = sum(x ** 2 for x in X)
+    sxxx = sum(x ** 3 for x in X)
+    sxxxx = sum(x ** 4 for x in X)
+    sy = sum(Y)
+    sxy = sum(x * y for x, y in zip(X, Y))
+    sxxy = sum(x ** 2 * y for x, y in zip(X, Y))
     A = np.matrix([[len(X), sx, sxx], [sx, sxx, sxxx], [sxx, sxxx, sxxxx]])
     B = np.matrix([[sy], [sxy], [sxxy]])
     res = np.linalg.solve(A, B)
@@ -45,27 +32,16 @@ def square_approximation(X, Y):
 
 
 def cube_approximation(X, Y):
-    sx = 0
-    sxx = 0
-    sxxx = 0
-    sxxxx = 0
-    sxxxxx = 0
-    sxxxxxx = 0
-    sy = 0
-    sxy = 0
-    sxxy = 0
-    sxxxy = 0
-    for x, y in zip(X, Y):
-        sx += x
-        sxx += x * x
-        sxxx += x * x * x
-        sxxxx += x * x * x * x
-        sy += y
-        sxy += x * y
-        sxxy += x * x * y
-        sxxxxx += x ** 5
-        sxxxxxx += x ** 6
-        sxxxy += x ** 3 * y
+    sx = sum(X)
+    sxx = sum(x ** 2 for x in X)
+    sxxx = sum(x ** 3 for x in X)
+    sxxxx = sum(x ** 4 for x in X)
+    sxxxxx = sum(x ** 5 for x in X)
+    sxxxxxx = sum(x ** 6 for x in X)
+    sy = sum(Y)
+    sxy = sum(x * y for x, y in zip(X, Y))
+    sxxy = sum(x ** 2 * y for x, y in zip(X, Y))
+    sxxxy = sum(x ** 3 * y for x, y in zip(X, Y))
     A = np.matrix([
         [len(X), sx, sxx, sxxx],
         [sx, sxx, sxxx, sxxxx],
@@ -78,37 +54,31 @@ def cube_approximation(X, Y):
 
 
 def exponential_approximation(X, Y):
-    new_y = []
-    for y in Y:
-        new_y.append(math.log(y))
-    A, b = linear_approximation(X, new_y)
+    if any(y <= 0 for y in Y):
+        raise ValueError("Для показательной аппроксимации значения Y должны быть положительными.")
+    log_Y = [math.log(y) for y in Y]
+    A, b = linear_approximation(X, log_Y)
     return math.exp(A), b
 
 
 def logarithmic_approximation(X, Y):
-    new_x = []
-    for x in X:
-        if x <= 0:
-            return "error"
-        new_x.append(math.log(x))
-    return linear_approximation(new_x, Y)
+    if any(x <= 0 for x in X):
+        raise ValueError("Для логарифмической аппроксимации значения X должны быть положительными.")
+    log_X = [math.log(x) for x in X]
+    return linear_approximation(log_X, Y)
 
 
 def power_approximation(X, Y):
-    new_y = []
-    new_x = []
-    for y in Y:
-        new_y.append(math.log(y))
-    for x in X:
-        if x <= 0:
-            return "error"
-        new_x.append(math.log(x))
-    A, b = linear_approximation(new_x, new_y)
+    if any(x <= 0 for x in X) or any(y <= 0 for y in Y):
+        raise ValueError("Для степенной аппроксимации X и Y должны быть положительными.")
+    log_X = [math.log(x) for x in X]
+    log_Y = [math.log(y) for y in Y]
+    A, b = linear_approximation(log_X, log_Y)
     return math.exp(A), b
 
 
 def get_linear_approximation(X, Y):
-    a, b =  linear_approximation(X, Y)
+    a, b = linear_approximation(X, Y)
     return lambda x: a + b * x
 
 
@@ -124,12 +94,12 @@ def get_cube_approximation(X, Y):
 
 def get_exponential_approximation(X, Y):
     a, b = exponential_approximation(X, Y)
-    return lambda x: a * np.exp(b * x)
+    return lambda x: a * math.exp(b * x)
 
 
 def get_logarithmic_approximation(X, Y):
     a, b = logarithmic_approximation(X, Y)
-    return lambda x: a * np.log(x) + b
+    return lambda x: a * math.log(x) + b
 
 
 def get_power_approximation(X, Y):
@@ -140,13 +110,9 @@ def get_power_approximation(X, Y):
 def calculate_correlation(x_values, y_values):
     mean_x = sum(x_values) / len(x_values)
     mean_y = sum(y_values) / len(y_values)
-
-    numerator = sum((x - mean_x) * (y - mean_y)
-                    for x, y in zip(x_values, y_values))
-
+    numerator = sum((x - mean_x) * (y - mean_y) for x, y in zip(x_values, y_values))
     denominator_x = sum((x - mean_x) ** 2 for x in x_values)
     denominator_y = sum((y - mean_y) ** 2 for y in y_values)
-
     return numerator / math.sqrt(denominator_x * denominator_y)
 
 
@@ -157,15 +123,15 @@ def calculate_determination(y_true, y_pred):
     return 1 - ss_res / ss_tot
 
 
-def print_approximation_quality(R):
+def print_approximation_quality(R, output_file):
     if R >= 0.95:
-        print("Высокая аппроксимация")
+        print("Высокая аппроксимация", file=output_file)
     elif R >= 0.75:
-        print("Удовлетворительная аппроксимация")
+        print("Удовлетворительная аппроксимация", file=output_file)
     elif R >= 0.5:
-        print("Слабая аппроксимация")
+        print("Слабая аппроксимация", file=output_file)
     else:
-        print("Недостаточная аппроксимация")
+        print("Недостаточная аппроксимация", file=output_file)
 
 
 def calculate_standard_deviation(y_pred, y_true):
@@ -231,8 +197,7 @@ def run_approximations(x_values, y_values, output_file):
             R2 = calculate_determination(y_values, predicted)
 
             print(f"\n{method['name']} аппроксимация:", file=output_file)
-            print(f"Формула: phi(x) = {method['formula'].format(*coefficients)}",
-                  file=output_file)
+            print(f"Формула: phi(x) = {method['formula'].format(*coefficients)}", file=output_file)
 
             print_table(output_file, "     X:     ", x_values, ".3f")
             print_table(output_file, "     Y:     ", y_values, ".3f")
@@ -244,7 +209,7 @@ def run_approximations(x_values, y_values, output_file):
                 print(f"Коэффициент корреляции: {corr:.3f}", file=output_file)
 
             print(f"Коэффициент детерминации R²: {R2:.3f}", file=output_file)
-            print_approximation_quality(R2)
+            print_approximation_quality(R2, output_file)
             print(f"Среднеквадратичное отклонение: {sigma:.3f}", file=output_file)
 
             if sigma < best_sigma:
@@ -252,12 +217,11 @@ def run_approximations(x_values, y_values, output_file):
                 best_method = method['name']
 
             x_plot = np.linspace(min_x, max_x, 400)
-            y_plot = np.ravel(approx_func(x_plot))
+            y_plot = np.ravel([approx_func(x) for x in x_plot])
             plt.plot(x_plot, y_plot, label=method['name'])
 
         except Exception as e:
-            print(f"Ошибка в {method['name']} аппроксимации: {str(e)}",
-                  file=output_file)
+            print(f"Ошибка в {method['name']} аппроксимации: {str(e)}", file=output_file)
 
     print(f"\nЛучший метод: {best_method}", file=output_file)
     print(f"Минимальное стандартное отклонение: {best_sigma:.3f}", file=output_file)
@@ -301,8 +265,7 @@ def main():
                     x_data.append(x)
                     y_data.append(y)
                 except ValueError:
-                    raise ValueError(
-                        f"Ошибка в строке '{line.strip()}'. Ожидались два числа.")
+                    raise ValueError(f"Ошибка в строке '{line.strip()}'. Ожидались два числа.")
 
             output_dest = input("Введите файл для вывода: ")
             output_file = stdout if not output_dest else open(output_dest, "w")
